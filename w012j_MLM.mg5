@@ -15,7 +15,7 @@ define lep = l+ l-
 define nu = vl vl~
 generate p p > lep nu QCD=0 QED=2
 output w012j_MLM --f
-launch w012j_MLM --name=misset_0_50
+launch w012j_MLM --name=misset_150_200
 shower = OFF
 detector = OFF
 analysis = MadAnalysis5
@@ -37,45 +37,6 @@ set ptl1min 150.0
 set etal 2.5
 set sde_strategy 2
 set hard_survey 2
-set misset 0.0
-set missetmax 50.0
-set iseed 0
-set nevents 100_000
-done
-
-launch w012j_MLM --name=misset_50_100
-shower = OFF
-detector = OFF
-analysis = MadAnalysis5
-madspin = OFF
-reweight = OFF
-done
-set misset 50.0
-set missetmax 100.0
-set iseed 0
-set nevents 100_000
-done
-
-launch w012j_MLM --name=misset_100_150
-shower = OFF
-detector = OFF
-analysis = MadAnalysis5
-madspin = OFF
-reweight = OFF
-done
-set misset 100.0
-set missetmax 150.0
-set iseed 0
-set nevents 100_000
-done
-
-launch w012j_MLM --name=misset_150_200
-shower = OFF
-detector = OFF
-analysis = MadAnalysis5
-madspin = OFF
-reweight = OFF
-done
 set misset 150.0
 set missetmax 200.0
 set iseed 0

@@ -20,9 +20,14 @@ The LAST slice is always unbounded on the upper edge ('missetmax = -1.0',
 named e.g. misset_450_inf) so that no phase space is discarded.
 
 Examples:
-    python3 gen_slicing_script.py                          # misset 0-500, 50 GeV slices
+    python3 gen_slicing_script.py                          # misset 150-450 + [450,inf], 50 GeV slices
     python3 gen_slicing_script.py --width 25 --max 1000    # finer slices, wider range
     python3 gen_slicing_script.py --detector Delphes       # reconstruction-level stage
+
+Note: the default lower edge is 150 GeV (= ptl1min): at LO the lepton and
+the neutrino are back-to-back, so MET = ptl1 >= ptl1min for every event
+and slices below 150 GeV contain no phase space (MG5aMC reports a zero
+result for them).
 """
 import argparse
 
@@ -88,8 +93,10 @@ def main():
                     "per slice of the slicing variable).")
     p.add_argument("--variable", default="misset",
                    help="slicing variable (default: misset)")
-    p.add_argument("--min", type=float, default=0.0,
-                   help="lower edge of the sliced range (default: 0.0)")
+    p.add_argument("--min", type=float, default=150.0,
+                   help="lower edge of the sliced range (default: 150.0 = "
+                        "ptl1min; slices below it are empty because "
+                        "MET = ptl1 >= ptl1min at LO)")
     p.add_argument("--max", type=float, default=500.0,
                    help="upper edge of the sliced range (default: 500.0)")
     p.add_argument("--width", type=float, default=50.0,

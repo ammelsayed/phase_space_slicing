@@ -80,6 +80,10 @@ applied inside a generated process (`Template/LO/Cards/run_card.dat`,
 * **The last slice is always unbounded** (`missetmax = -1.0`, named e.g.
   `misset_450_inf`): bounding it would silently discard all events above
   the last edge.
+* At LO the lepton and the neutrino are back-to-back, so
+  `MET = ptl1 ≥ ptl1min = 150` GeV for every event of this sample:
+  slices below 150 GeV contain no phase space (MG5aMC reports "Zero
+  result" for them), which is why the default range starts at 150 GeV.
 * The cut is inclusive on **both** edges: an event passes if
   `MET ≥ misset` **and** (`missetmax < 0` **or** `MET ≤ missetmax`).
   Adjacent slices therefore *overlap* at the exact boundary value
@@ -92,9 +96,9 @@ applied inside a generated process (`Template/LO/Cards/run_card.dat`,
 ## What we will study
 
 **Stage 1 — parton level (LHE files).** Generate the slice matrix
-(defaults: `[0, 50], [50, 100], …, [400, 450], [450, ∞]` GeV — the last
-slice unbounded — 100 000 events per slice) plus a single-run reference
-covering the full range, then:
+(defaults: `[150, 200], [200, 250], …, [400, 450], [450, ∞]` GeV — the
+last slice unbounded — 100 000 events per slice) plus a single-run
+reference covering the full range, then:
 
 * combine the slices into one weighted sample (the LHE weight of each
   event already carries the σᵢ/Nᵢ normalization) and check the closure
