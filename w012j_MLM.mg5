@@ -147,7 +147,7 @@ set iseed 0
 set nevents 100_000
 done
 
-launch w012j_MLM --name=misset_450_500
+launch w012j_MLM --name=misset_450_inf
 shower = OFF
 detector = OFF
 analysis = MadAnalysis5
@@ -155,7 +155,7 @@ madspin = OFF
 reweight = OFF
 done
 set misset 450.0
-set missetmax 500.0
+set missetmax -1.0  # last slice: no upper cut
 set iseed 0
 set nevents 100_000
 done

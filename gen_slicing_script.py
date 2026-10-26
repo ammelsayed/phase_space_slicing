@@ -16,6 +16,8 @@ The base script is the w012j_MLM.mg5 of the phase_space_biasing repository
 Run-card cut names verified in MG5aMC v3.7.2: the MET minimum cut is
 'misset' (there is NO 'missetmin') and the maximum cut is 'missetmax'
 (negative = no cut). Both edges are inclusive in the generated cuts.f.
+The LAST slice is always unbounded on the upper edge ('missetmax = -1.0',
+named e.g. misset_450_inf) so that no phase space is discarded.
 
 Examples:
     python3 gen_slicing_script.py                          # misset 0-500, 50 GeV slices
@@ -33,7 +35,7 @@ CUT_PARAMS = {
 
 
 def launch_block(proc, name, shower, detector, analysis, first,
-                 min_param, max_param, lo, hi, nevents):
+                 min_param, max_param, lo, hi, nevents, unbounded=False):
     lines = [
         f"launch {proc} --name={name}",
         f"shower = {shower}",
@@ -65,9 +67,13 @@ def launch_block(proc, name, shower, detector, analysis, first,
         ]
     # every block is explicit about what defines the run: slice bounds,
     # seed and number of events
+    if unbounded:
+        max_line = f"set {max_param} -1.0  # last slice: no upper cut"
+    else:
+        max_line = f"set {max_param} {hi:.1f}"
     lines += [
         f"set {min_param} {lo:.1f}",
-        f"set {max_param} {hi:.1f}",
+        max_line,
         "set iseed 0",
         f"set nevents {nevents}",
         "done",
@@ -137,11 +143,17 @@ def main():
     edges = [lo_min + i * width for i in range(n_full + 1)]
     if edges[-1] < hi_max - 1e-9:
         edges.append(hi_max)
-    for i, (lo, hi) in enumerate(zip(edges[:-1], edges[1:])):
-        name = args.name_format.format(var=args.variable, lo=lo, hi=hi)
+    # the last slice is always unbounded on the upper edge: no phase space
+    # may be discarded (missetmax = -1 disables the max cut in MG5aMC)
+    pairs = list(zip(edges[:-1], edges[1:]))
+    for i, (lo, hi) in enumerate(pairs):
+        last = i == len(pairs) - 1
+        name = args.name_format.format(
+            var=args.variable, lo=lo, hi=float("inf") if last else hi)
         blocks.append(launch_block(args.process, name, args.shower,
                                    args.detector, args.analysis, i == 0,
-                                   min_param, max_param, lo, hi, args.nevents))
+                                   min_param, max_param, lo, hi, args.nevents,
+                                   unbounded=last))
 
     header = f"""\
 set automatic_html_opening False --no_save
@@ -168,12 +180,15 @@ output {args.process} --f
     with open(output, "w") as f:
         f.write(script)
 
+    def edge_str(hi):
+        return "inf" if hi == float("inf") else f"{hi:g}"
+
     print(f"wrote {output}: {len(blocks)} slices of {args.variable} "
-          f"({edges[0]:g} to {edges[-1]:g} GeV, width {width:g}, "
-          f"{args.nevents} events each)")
-    for i, (lo, hi) in enumerate(zip(edges[:-1], edges[1:])):
-        print(f"  [{i}] {args.name_format.format(var=args.variable, lo=lo, hi=hi)}"
-              f"  ->  [{lo:g}, {hi:g}] GeV")
+          f"({edges[0]:g} to {edge_str(edges[-1])}, width {width:g}, "
+          f"{args.nevents} events each; last slice unbounded)")
+    for i, (lo, hi) in enumerate(pairs):
+        print(f"  [{i}] {args.name_format.format(var=args.variable, lo=lo, hi=float('inf') if i == len(pairs) - 1 else hi)}"
+              f"  ->  [{lo:g}, {edge_str(hi)}]")
 
 
 if __name__ == "__main__":
