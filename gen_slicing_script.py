@@ -22,12 +22,18 @@ named e.g. misset_450_inf) so that no phase space is discarded.
 Examples:
     python3 gen_slicing_script.py                          # misset 150-450 + [450,inf], 50 GeV slices
     python3 gen_slicing_script.py --width 25 --max 1000    # finer slices, wider range
-    python3 gen_slicing_script.py --detector Delphes       # reconstruction-level stage
+    python3 gen_slicing_script.py --ref                    # inclusive reference (no MET cut)
+    python3 gen_slicing_script.py --detector Delphes       # with reconstruction
 
 Note: the default lower edge is 150 GeV (= ptl1min): at LO the lepton and
 the neutrino are back-to-back, so MET = ptl1 >= ptl1min for every event
 and slices below 150 GeV contain no phase space (MG5aMC reports a zero
 result for them).
+
+With --pythia8-card/--delphes-card the (uncommented) card paths are
+written into every launch block; they must be valid relative to the
+directory the generated script is run from (runmg5.sh runs it from its
+own directory).
 """
 import argparse
 
@@ -40,7 +46,8 @@ CUT_PARAMS = {
 
 
 def launch_block(proc, name, shower, detector, analysis, first,
-                 min_param, max_param, lo, hi, nevents, unbounded=False):
+                 min_param, max_param, lo, hi, nevents, unbounded=False,
+                 pythia8_card=None, delphes_card=None):
     lines = [
         f"launch {proc} --name={name}",
         f"shower = {shower}",
@@ -50,14 +57,15 @@ def launch_block(proc, name, shower, detector, analysis, first,
         "reweight = OFF",
         "done",
     ]
+    # mirror the original working scripts: the first run_card line after
+    # the switch stage is 'set ebeam', then the card paths, then the rest
+    lines.append("set ebeam 6800")
+    if pythia8_card:
+        lines.append(pythia8_card)
+    if delphes_card:
+        lines.append(delphes_card)
     if first:
-        # full run-card definition; identical values are re-used by the
-        # later launch blocks (the process run_card persists)
         lines += [
-            "set ebeam 6800",
-            "# shower and detector are OFF: pythia8/delphes card lines commented out",
-            "# ./Cards_edited/pythia8_card_TuneA14.dat",
-            "# ./Cards_edited/delphes_card_ATLAS_FatJobPTMin50.tcl",
             "set pdlabel lhapdf",
             "set lhaid 331900",
             "# set ickkw 1",
@@ -73,7 +81,7 @@ def launch_block(proc, name, shower, detector, analysis, first,
     # every block is explicit about what defines the run: slice bounds,
     # seed and number of events
     if unbounded:
-        max_line = f"set {max_param} -1.0  # last slice: no upper cut"
+        max_line = f"set {max_param} -1.0  # no upper cut"
     else:
         max_line = f"set {max_param} {hi:.1f}"
     lines += [
@@ -122,6 +130,18 @@ def main():
     p.add_argument("--max-param", default=None,
                    help="run_card name of the maximum cut "
                         "(default: from CUT_PARAMS)")
+    p.add_argument("--ref", action="store_true",
+                   help="generate the inclusive reference script instead of "
+                        "slices: single run, no MET cut (misset 0.0, "
+                        "missetmax -1.0), named 'ref'")
+    p.add_argument("--pythia8-card", default=None,
+                   help="path of the pythia8 card, uncommented in every "
+                        "launch block (e.g. ../Cards/pythia8_card_TuneA14.dat "
+                        "for a script in runs/)")
+    p.add_argument("--delphes-card", default=None,
+                   help="path of the delphes card, uncommented in every "
+                        "launch block (e.g. "
+                        "../Cards/delphes_card_ATLAS_FatJetPTMin50.tcl)")
     args = p.parse_args()
 
     if args.variable not in CUT_PARAMS and (not args.min_param or
@@ -133,6 +153,41 @@ def main():
         min_param = args.min_param
     if args.max_param:
         max_param = args.max_param
+
+    header = f"""\
+set automatic_html_opening False --no_save
+set notification_center False --no_save
+set zerowidth_tchannel False --no_save
+set nb_core 40 --no_save
+set nb_core_pythia8 40 --no_save
+set nb_core_delphes 40 --no_save
+import model sm
+define p = g u c d s b u~ c~ d~ s~ b~
+define j = g u c d s b u~ c~ d~ s~ b~
+define l+ = e+ mu+ ta+
+define l- = e- mu- ta-
+define vl = ve vm vt
+define vl~ = ve~ vm~ vt~
+define lep = l+ l-
+define nu = vl vl~
+generate p p > lep nu QCD=0 QED=2
+output {args.process} --f
+"""
+
+    if args.ref:
+        blocks = [launch_block(args.process, "ref", args.shower, args.detector,
+                               args.analysis, True, min_param, max_param,
+                               0.0, None, args.nevents, unbounded=True,
+                               pythia8_card=args.pythia8_card,
+                               delphes_card=args.delphes_card)]
+        script = header + "\n".join(blocks)
+        output = args.output or f"{args.process}.mg5"
+        with open(output, "w") as f:
+            f.write(script)
+        print(f"wrote {output}: inclusive reference (no MET cut), "
+              f"{args.nevents} events, shower={args.shower}, "
+              f"detector={args.detector}")
+        return
 
     lo_min, hi_max, width = args.min, args.max, args.width
     if width <= 0:
@@ -160,27 +215,9 @@ def main():
         blocks.append(launch_block(args.process, name, args.shower,
                                    args.detector, args.analysis, i == 0,
                                    min_param, max_param, lo, hi, args.nevents,
-                                   unbounded=last))
-
-    header = f"""\
-set automatic_html_opening False --no_save
-set notification_center False --no_save
-set zerowidth_tchannel False --no_save
-set nb_core 40 --no_save
-set nb_core_pythia8 40 --no_save
-set nb_core_delphes 40 --no_save
-import model sm
-define p = g u c d s b u~ c~ d~ s~ b~
-define j = g u c d s b u~ c~ d~ s~ b~
-define l+ = e+ mu+ ta+
-define l- = e- mu- ta-
-define vl = ve vm vt
-define vl~ = ve~ vm~ vt~
-define lep = l+ l-
-define nu = vl vl~
-generate p p > lep nu QCD=0 QED=2
-output {args.process} --f
-"""
+                                   unbounded=last,
+                                   pythia8_card=args.pythia8_card,
+                                   delphes_card=args.delphes_card))
 
     script = header + "\n".join(blocks)
     output = args.output or f"{args.process}.mg5"
