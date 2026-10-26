@@ -1,0 +1,8 @@
+# MG5aMC run artifacts: generated process directories and logs
+# (only the study/ and delphes/ results are committed)
+w012j_MLM/
+runs/
+LogFiles/
+MA5*/
+madanalysis*/
+*.log

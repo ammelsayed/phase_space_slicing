@@ -1,0 +1,161 @@
+set automatic_html_opening False --no_save
+set notification_center False --no_save
+set zerowidth_tchannel False --no_save
+set nb_core 40 --no_save
+set nb_core_pythia8 40 --no_save
+set nb_core_delphes 40 --no_save
+import model sm
+define p = g u c d s b u~ c~ d~ s~ b~
+define j = g u c d s b u~ c~ d~ s~ b~
+define l+ = e+ mu+ ta+
+define l- = e- mu- ta-
+define vl = ve vm vt
+define vl~ = ve~ vm~ vt~
+define lep = l+ l-
+define nu = vl vl~
+generate p p > lep nu QCD=0 QED=2
+output w012j_MLM --f
+launch w012j_MLM --name=misset_0_50
+shower = OFF
+detector = OFF
+analysis = MadAnalysis5
+madspin = OFF
+reweight = OFF
+done
+set ebeam 6800
+# shower and detector are OFF: pythia8/delphes card lines commented out
+# ./Cards_edited/pythia8_card_TuneA14.dat
+# ./Cards_edited/delphes_card_ATLAS_FatJobPTMin50.tcl
+set pdlabel lhapdf
+set lhaid 331900
+# set ickkw 1
+# set xqcut 30.0
+# set maxjetflavor 5
+set use_syst False
+set cut_decays True
+set ptl1min 150.0
+set etal 2.5
+set sde_strategy 2
+set hard_survey 2
+set misset 0.0
+set missetmax 50.0
+set iseed 0
+set nevents 100_000
+done
+
+launch w012j_MLM --name=misset_50_100
+shower = OFF
+detector = OFF
+analysis = MadAnalysis5
+madspin = OFF
+reweight = OFF
+done
+set misset 50.0
+set missetmax 100.0
+set iseed 0
+set nevents 100_000
+done
+
+launch w012j_MLM --name=misset_100_150
+shower = OFF
+detector = OFF
+analysis = MadAnalysis5
+madspin = OFF
+reweight = OFF
+done
+set misset 100.0
+set missetmax 150.0
+set iseed 0
+set nevents 100_000
+done
+
+launch w012j_MLM --name=misset_150_200
+shower = OFF
+detector = OFF
+analysis = MadAnalysis5
+madspin = OFF
+reweight = OFF
+done
+set misset 150.0
+set missetmax 200.0
+set iseed 0
+set nevents 100_000
+done
+
+launch w012j_MLM --name=misset_200_250
+shower = OFF
+detector = OFF
+analysis = MadAnalysis5
+madspin = OFF
+reweight = OFF
+done
+set misset 200.0
+set missetmax 250.0
+set iseed 0
+set nevents 100_000
+done
+
+launch w012j_MLM --name=misset_250_300
+shower = OFF
+detector = OFF
+analysis = MadAnalysis5
+madspin = OFF
+reweight = OFF
+done
+set misset 250.0
+set missetmax 300.0
+set iseed 0
+set nevents 100_000
+done
+
+launch w012j_MLM --name=misset_300_350
+shower = OFF
+detector = OFF
+analysis = MadAnalysis5
+madspin = OFF
+reweight = OFF
+done
+set misset 300.0
+set missetmax 350.0
+set iseed 0
+set nevents 100_000
+done
+
+launch w012j_MLM --name=misset_350_400
+shower = OFF
+detector = OFF
+analysis = MadAnalysis5
+madspin = OFF
+reweight = OFF
+done
+set misset 350.0
+set missetmax 400.0
+set iseed 0
+set nevents 100_000
+done
+
+launch w012j_MLM --name=misset_400_450
+shower = OFF
+detector = OFF
+analysis = MadAnalysis5
+madspin = OFF
+reweight = OFF
+done
+set misset 400.0
+set missetmax 450.0
+set iseed 0
+set nevents 100_000
+done
+
+launch w012j_MLM --name=misset_450_500
+shower = OFF
+detector = OFF
+analysis = MadAnalysis5
+madspin = OFF
+reweight = OFF
+done
+set misset 450.0
+set missetmax 500.0
+set iseed 0
+set nevents 100_000
+done
