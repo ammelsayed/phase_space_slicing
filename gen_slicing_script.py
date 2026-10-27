@@ -48,7 +48,7 @@ CUT_PARAMS = {
 def launch_block(proc, name, shower, detector, analysis, first,
                  min_param, max_param, lo, hi, nevents, unbounded=False,
                  pythia8_card=None, delphes_card=None, bias_module=None,
-                 bias_parameters=None):
+                 bias_parameters=None, mlm=False):
     lines = [
         f"launch {proc} --name={name}",
         f"shower = {shower}",
@@ -73,9 +73,13 @@ def launch_block(proc, name, shower, detector, analysis, first,
         lines += [
             "set pdlabel lhapdf",
             "set lhaid 331900",
-            "# set ickkw 1",
-            "# set xqcut 30.0",
-            "# set maxjetflavor 5",
+        ]
+        if mlm:
+            lines += ["set ickkw 1", "set xqcut 30.0", "set maxjetflavor 5"]
+        else:
+            lines += ["# set ickkw 1", "# set xqcut 30.0",
+                      "# set maxjetflavor 5"]
+        lines += [
             "set use_syst False",
             "set cut_decays True",
             "set ptl1min 150.0",
@@ -160,6 +164,10 @@ def main():
     p.add_argument("--bias-parameters", default=None,
                    help="bias_parameters dictionary string, e.g. "
                         "\"{'a': 1.0}\"")
+    p.add_argument("--mlm", action="store_true",
+                   help="uncomment the MLM matching sets (ickkw 1, "
+                        "xqcut 30.0, maxjetflavor 5) - use when jet "
+                        "multiplicity processes are added")
     args = p.parse_args()
 
     if args.variable not in CUT_PARAMS and (not args.min_param or
@@ -203,7 +211,8 @@ output {args.process} --f
                                pythia8_card=args.pythia8_card,
                                delphes_card=args.delphes_card,
                                bias_module=args.bias_module,
-                               bias_parameters=args.bias_parameters)]
+                               bias_parameters=args.bias_parameters,
+                               mlm=args.mlm)]
         script = header + "\n".join(blocks)
         output = args.output or f"{args.process}.mg5"
         with open(output, "w") as f:
@@ -253,7 +262,8 @@ output {args.process} --f
                                    pythia8_card=args.pythia8_card,
                                    delphes_card=args.delphes_card,
                                    bias_module=args.bias_module,
-                                   bias_parameters=args.bias_parameters))
+                                   bias_parameters=args.bias_parameters,
+                                   mlm=args.mlm))
 
     script = header + "\n".join(blocks)
     output = args.output or f"{args.process}.mg5"
