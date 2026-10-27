@@ -47,7 +47,8 @@ CUT_PARAMS = {
 
 def launch_block(proc, name, shower, detector, analysis, first,
                  min_param, max_param, lo, hi, nevents, unbounded=False,
-                 pythia8_card=None, delphes_card=None):
+                 pythia8_card=None, delphes_card=None, bias_module=None,
+                 bias_parameters=None):
     lines = [
         f"launch {proc} --name={name}",
         f"shower = {shower}",
@@ -60,6 +61,10 @@ def launch_block(proc, name, shower, detector, analysis, first,
     # mirror the original working scripts: the first run_card line after
     # the switch stage is 'set ebeam', then the card paths, then the rest
     lines.append("set ebeam 6800")
+    if bias_module:
+        lines.append(f"set bias_module {bias_module}")
+    if bias_parameters:
+        lines.append(f"set bias_parameters {bias_parameters}")
     if pythia8_card:
         lines.append(pythia8_card)
     if delphes_card:
@@ -142,6 +147,19 @@ def main():
                    help="path of the delphes card, uncommented in every "
                         "launch block (e.g. "
                         "../Cards/delphes_card_ATLAS_FatJetPTMin50.tcl)")
+    p.add_argument("--geometric", type=float, default=None, metavar="RATIO",
+                   help="geometric slicing: slice edges at min*RATIO^k up to "
+                        "--max instead of fixed --width steps (adaptive "
+                        "widths for a steeply falling spectrum)")
+    p.add_argument("--add-jets", action="store_true",
+                   help="add the lep nu j and lep nu j j multiplicity "
+                        "processes (no MLM matching)")
+    p.add_argument("--bias-module", default=None,
+                   help="absolute path of a bias module directory, set in "
+                        "every launch block (for biasing-vs-slicing tests)")
+    p.add_argument("--bias-parameters", default=None,
+                   help="bias_parameters dictionary string, e.g. "
+                        "\"{'a': 1.0}\"")
     args = p.parse_args()
 
     if args.variable not in CUT_PARAMS and (not args.min_param or
@@ -154,6 +172,10 @@ def main():
     if args.max_param:
         max_param = args.max_param
 
+    generate_lines = "generate p p > lep nu QCD=0 QED=2"
+    if args.add_jets:
+        generate_lines += ("\nadd process p p > lep nu j QCD=1 QED=2 @1"
+                           "\nadd process p p > lep nu j j QCD=2 QED=2 @2")
     header = f"""\
 set automatic_html_opening False --no_save
 set notification_center False --no_save
@@ -170,7 +192,7 @@ define vl = ve vm vt
 define vl~ = ve~ vm~ vt~
 define lep = l+ l-
 define nu = vl vl~
-generate p p > lep nu QCD=0 QED=2
+{generate_lines}
 output {args.process} --f
 """
 
@@ -179,7 +201,9 @@ output {args.process} --f
                                args.analysis, True, min_param, max_param,
                                0.0, None, args.nevents, unbounded=True,
                                pythia8_card=args.pythia8_card,
-                               delphes_card=args.delphes_card)]
+                               delphes_card=args.delphes_card,
+                               bias_module=args.bias_module,
+                               bias_parameters=args.bias_parameters)]
         script = header + "\n".join(blocks)
         output = args.output or f"{args.process}.mg5"
         with open(output, "w") as f:
@@ -190,21 +214,31 @@ output {args.process} --f
         return
 
     lo_min, hi_max, width = args.min, args.max, args.width
-    if width <= 0:
-        p.error("--width must be positive")
-    if hi_max <= lo_min:
-        p.error("--max must be greater than --min")
-
-    n_slices = (hi_max - lo_min) / width
-    n_full = round(n_slices)
-    if abs(n_slices - n_full) > 1e-9:
-        print(f"WARNING: range [{lo_min:g}, {hi_max:g}] is not a multiple of "
-              f"the width {width:g}; the last slice is narrower.")
+    if args.geometric is not None:
+        if args.geometric <= 1.0:
+            p.error("--geometric RATIO must be > 1")
+        if hi_max <= lo_min:
+            p.error("--max must be greater than --min")
+        edges = [lo_min]
+        while edges[-1] < hi_max:
+            edges.append(min(edges[-1] * args.geometric, hi_max))
+        edges = sorted(set(round(e) for e in edges))
+        width = None
+    else:
+        if width <= 0:
+            p.error("--width must be positive")
+        if hi_max <= lo_min:
+            p.error("--max must be greater than --min")
+        n_slices = (hi_max - lo_min) / width
+        n_full = round(n_slices)
+        if abs(n_slices - n_full) > 1e-9:
+            print(f"WARNING: range [{lo_min:g}, {hi_max:g}] is not a multiple "
+                  f"of the width {width:g}; the last slice is narrower.")
+        edges = [lo_min + i * width for i in range(n_full + 1)]
+        if edges[-1] < hi_max - 1e-9:
+            edges.append(hi_max)
 
     blocks = []
-    edges = [lo_min + i * width for i in range(n_full + 1)]
-    if edges[-1] < hi_max - 1e-9:
-        edges.append(hi_max)
     # the last slice is always unbounded on the upper edge: no phase space
     # may be discarded (missetmax = -1 disables the max cut in MG5aMC)
     pairs = list(zip(edges[:-1], edges[1:]))
@@ -217,7 +251,9 @@ output {args.process} --f
                                    min_param, max_param, lo, hi, args.nevents,
                                    unbounded=last,
                                    pythia8_card=args.pythia8_card,
-                                   delphes_card=args.delphes_card))
+                                   delphes_card=args.delphes_card,
+                                   bias_module=args.bias_module,
+                                   bias_parameters=args.bias_parameters))
 
     script = header + "\n".join(blocks)
     output = args.output or f"{args.process}.mg5"
@@ -227,8 +263,10 @@ output {args.process} --f
     def edge_str(hi):
         return "inf" if hi == float("inf") else f"{hi:g}"
 
+    w_str = (f"width {width:g}" if width is not None
+             else f"geometric ratio {args.geometric:g}")
     print(f"wrote {output}: {len(blocks)} slices of {args.variable} "
-          f"({edges[0]:g} to {edge_str(edges[-1])}, width {width:g}, "
+          f"({edges[0]:g} to {edge_str(edges[-1])}, {w_str}, "
           f"{args.nevents} events each; last slice unbounded)")
     for i, (lo, hi) in enumerate(pairs):
         print(f"  [{i}] {args.name_format.format(var=args.variable, lo=lo, hi=float('inf') if i == len(pairs) - 1 else hi)}"
