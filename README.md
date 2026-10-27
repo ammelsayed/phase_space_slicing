@@ -95,35 +95,33 @@ applied inside a generated process (`Template/LO/Cards/run_card.dat`,
 
 ## What we will study
 
-**Stage 1 — parton level (LHE files).** Generate the slice matrix
-(defaults: `[150, 200], [200, 250], …, [400, 450], [450, ∞]` GeV — the
-last slice unbounded — 100 000 events per slice) plus a single-run
-reference covering the full range, then:
+**Generation** (one pass serves both stages): an inclusive reference
+(`ref`, 100k events, no MET cut) plus three slice matrices
+(`w50`, `w100`, `w200`: 10k events per slice, slices of the MET from
+150 GeV up to an unbounded last slice), all with Pythia8 + Delphes
+enabled and the cards in `Cards/`, so each run yields both the LHE and
+the Delphes ROOT file.
 
-* combine the slices into one weighted sample (the LHE weight of each
-  event already carries the σᵢ/Nᵢ normalization) and check the closure
-  of the combined ptl1/MET/HT distributions against the reference;
-* measure the tail statistics gained (or lost) per unit CPU as a
-  function of the slice width (50 vs. 25 GeV slices vs. one wide run);
-* quantify the border artifacts: per-slice normalization uncertainties
-  δσᵢ propagating into steps of the combined spectrum at the slice
-  boundaries, and the weight discontinuity between the last bin of one
-  slice and the first bin of the next;
-* check the additivity of the cross sections: Σσᵢ vs. σ_reference.
+**Stage 1 — parton level (LHE files, analysed with pylhe).** The slices
+of each width are combined into one weighted sample and compared to the
+reference: cross-section additivity, closure of the combined spectra,
+per-bin relative statistical uncertainty as a function of the slice
+width, weight discontinuities and double-counting at the borders.
 
-**Stage 2 — reconstruction level (Delphes).** Re-run the slices with
-`--shower Pythia8 --detector Delphes` and study how the detector
-resolution migrates events across the *parton-level* borders: events
-generated in slice `[0, 50]` reconstructing with MET > 50 GeV carry the
-normalization of their generation slice, and the combined
-reconstruction-level MET distribution must stay smooth across borders —
-any visible step or slope change is a border artifact caused by the
-slicing itself. The dependence of these artifacts on the slice width is
-the main observable of this stage.
+**Stage 2 — reconstruction level (Delphes, analysed with pyROOT +
+libDelphes).** The same comparison on `MissingET.MET` and on the
+leading-lepton pT from the `Electron`/`Muon` branches, plus the
+migration of events across the parton-level borders caused by the
+detector resolution.
 
-Results will be committed under `study/` (LHE level) and `delphes/`
-(reconstruction level) as they are produced; the MG5aMC process
-directories and run logs are gitignored.
+**Results**: see [study/findings.md](study/findings.md) (full report)
+and `study/plots/`. Headline: slicing preserves the total cross section
+to <0.2% and buys a *flat* per-bin precision profile (~2.5% up to
+~950 GeV with 50 GeV slices vs ~100% in the inclusive tail at 1 TeV);
+the borders are benign at parton level (no gaps, no double-counting)
+and are absorbed by the detector smearing at reco level; the price is a
+large event-weight spread (N_eff drops below the inclusive reference)
+and per-slice normalization uncertainties accumulating in the sum.
 
 ## References
 
